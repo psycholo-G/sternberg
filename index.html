@@ -130,8 +130,8 @@ function calcResults(resps) {
     r.correct?(m[r.size].rc.push(r.rt),m[r.size].c++):m[r.size].rw.push(r.rt);
     m[r.size].tot++;
   }
-  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):"NA";
-  return SS.map(s=>({size:s,rc:m[s]?avg(m[s].rc):"NA",rw:m[s]?avg(m[s].rw):"NA",acc:m[s]?Math.round(m[s].c/m[s].tot*100):"NA"}));
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+  return SS.map(s=>({size:s,rc:m[s]?avg(m[s].rc):null,rw:m[s]?avg(m[s].rw):null,acc:m[s]?Math.round(m[s].c/m[s].tot*100):null}));
 }
 
 function MiniChart({results,labelC,labelW,labelX,labelY}) {
@@ -285,7 +285,7 @@ function App() {
 
   const buildRows = (results) => {
     const hdr=["Name",...SS.map(s=>`RT_korrekt_SS${s}`),...SS.map(s=>`RT_falsch_SS${s}`),...SS.map(s=>`Acc%_SS${s}`)].join("\t");
-    const dat=[name,...SS.map(s=>results.find(r=>r.size===s)?.rc??"NA"),...SS.map(s=>results.find(r=>r.size===s)?.rw??("NA")),...SS.map(s=>results.find(r=>r.size===s)?.acc??("NA"))].join("\t");
+    const dat=[name,...SS.map(s=>results.find(r=>r.size===s)?.rc??"NA"),...SS.map(s=>results.find(r=>r.size===s)?.rw??"NA"),...SS.map(s=>results.find(r=>r.size===s)?.acc??"NA")].join("\t");
     return {hdr,dat};
   };
 
