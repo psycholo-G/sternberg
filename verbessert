@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sternberg Paradigm</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4ff;}
+.card{background:#fff;border-radius:1.2rem;box-shadow:0 4px 24px #0001;padding:2rem;max-width:560px;width:100%;margin:0 auto;}
+.btn{display:block;width:100%;padding:.75rem;border:none;border-radius:.8rem;font-size:1rem;font-weight:600;cursor:pointer;transition:background .15s;}
+.btn-primary{background:#4f46e5;color:#fff;} .btn-primary:hover{background:#4338ca;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-gray{background:#f1f5f9;color:#374151;} .btn-gray:hover{background:#e2e8f0;}
+.tag{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;background:#e0e7ff;color:#4338ca;font-weight:700;flex-shrink:0;}
+.mono{font-family:monospace;font-size:.75rem;white-space:nowrap;overflow-x:auto;}
+input{width:100%;border:1.5px solid #d1d5db;border-radius:.6rem;padding:.5rem 1rem;font-size:1.05rem;outline:none;}
+input:focus{border-color:#6366f1;box-shadow:0 0 0 3px #e0e7ff;}
+table{width:100%;border-collapse:collapse;font-size:.9rem;}
+th{background:#eef2ff;padding:.5rem .75rem;text-align:left;}
+td{padding:.4rem .75rem;border-bottom:1px solid #f1f5f9;}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.dark{background:#111827;}
+.probe-letter{width:7rem;height:7rem;background:#fff;color:#111;border-radius:1.2rem;display:flex;align-items:center;justify-content:center;font-size:3.5rem;font-weight:700;box-shadow:0 8px 32px #0003;}
+.mem-letter{width:4rem;height:4rem;background:#6366f1;color:#fff;border-radius:.8rem;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;}
+.row-box{background:#eef2ff;border-radius:.8rem;padding:1rem;margin-bottom:1rem;}
+.row-line{background:#fff;border:1px solid #c7d2fe;border-radius:.5rem;padding:.5rem .75rem;margin-top:.4rem;cursor:text;}
+/* Response buttons - fixed layout so they never move */
+.resp-area{display:flex;gap:1.2rem;width:100%;max-width:480px;margin:0 auto;}
+.resp-btn{flex:1;height:5rem;border:none;border-radius:1rem;font-size:1.4rem;font-weight:700;color:#fff;cursor:pointer;transition:transform .1s,opacity .15s;}
+.resp-btn:active{transform:scale(.95);}
+.resp-btn.active-yes{background:#16a34a;}
+.resp-btn.active-no{background:#dc2626;}
+.resp-btn.ghost{background:#fff;opacity:.18;cursor:default;pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const T = {
+  de: {
+    title:"Sternberg-Paradigma", subtitle:"Experiment zum Kurzzeitgedächtnis",
+    nameLabel:"Dein Name / Kürzel", namePlaceholder:"z.B. Max M.",
+    start:"Experiment starten", instrTitle:"Anleitung",
+    instr:[
+      "Dir wird kurz eine Liste von Buchstaben gezeigt – merke sie dir!",
+      "Danach erscheint ein einzelner Buchstabe.",
+      "War dieser Buchstabe in der Liste? Drücke Ja oder Nein – so schnell wie möglich!",
+      "Das Experiment besteht aus mehreren Runden mit unterschiedlich langen Listen.",
+    ],
+    memorize:"Merke dir diese Buchstaben:",
+    pressKey:"Tastatur: Y = Ja  |  N = Nein",
+    yesLabel:"Ja", noLabel:"Nein",
+    correct:"✓ Richtig!", wrong:"✗ Falsch!", ms:"ms",
+    yourResults:"Deine Ergebnisse", setSize:"Set-Größe",
+    avgRTcorrect:"Ø RT korrekt (ms)", avgRTwrong:"Ø RT falsch (ms)", accuracy:"Genauigkeit",
+    copyHint:"Markiere beide Zeilen, kopiere sie und füge sie in die Excel-Tabelle ein:",
+    restart:"Nochmal", setSizeLabel:"Set-Größe",
+    trialOf:(a,b)=>`Durchgang ${a} von ${b}`,
+    continue:"Weiter", correct_short:"Korrekt", wrong_short:"Falsch",
+    trialsInfo:"6 Set-Größen × 4 Durchgänge = 24 Trials",
+    practiceTitle:"Übungsdurchgang",
+    practiceSubtitle:"Dieser Durchgang zählt nicht – mach dich vertraut mit den Buttons.",
+    practiceCorrect:"✓ Richtig! Du hast das Prinzip verstanden.",
+    practiceWrong:"✗ Falsch – kein Problem, das war nur Übung!",
+    practiceAgain:"Nochmal üben",
+    practiceStart:"Experiment starten",
+    practicePrompt:"Wie möchtest du fortfahren?",
+  },
+  en: {
+    title:"Sternberg Paradigm", subtitle:"Short-Term Memory Experiment",
+    nameLabel:"Your Name / Initials", namePlaceholder:"e.g. Max M.",
+    start:"Start Experiment", instrTitle:"Instructions",
+    instr:[
+      "You will briefly see a list of letters – memorize them!",
+      "Then a single letter will appear.",
+      "Was that letter in the list? Press Yes or No – as fast as possible!",
+      "The experiment has multiple rounds with lists of different lengths.",
+    ],
+    memorize:"Memorize these letters:",
+    pressKey:"Keyboard: Y = Yes  |  N = No",
+    yesLabel:"Yes", noLabel:"No",
+    correct:"✓ Correct!", wrong:"✗ Wrong!", ms:"ms",
+    yourResults:"Your Results", setSize:"Set Size",
+    avgRTcorrect:"Avg RT correct (ms)", avgRTwrong:"Avg RT wrong (ms)", accuracy:"Accuracy",
+    copyHint:"Select both rows, copy them and paste into the Excel table:",
+    restart:"Try Again", setSizeLabel:"Set Size",
+    trialOf:(a,b)=>`Trial ${a} of ${b}`,
+    continue:"Continue", correct_short:"Correct", wrong_short:"Wrong",
+    trialsInfo:"6 Set Sizes × 4 Trials = 24 Trials total",
+    practiceTitle:"Practice Trial",
+    practiceSubtitle:"This trial doesn't count – just get familiar with the buttons.",
+    practiceCorrect:"✓ Correct! You've got the idea.",
+    practiceWrong:"✗ Wrong – no worries, this was just practice!",
+    practiceAgain:"Practice again",
+    practiceStart:"Start Experiment",
+    practicePrompt:"How would you like to continue?",
+  },
+};
+
+const LETTERS = "BCDFGHJKLMNPQRSTVWXZ".split("");
+const SS = [1,2,3,4,5,6];
+const TRIALS_PER_SIZE = 4;
+const MEMORIZE_MS = 3500;
+const FEEDBACK_MS = 1100;
+
+const shuffle = a => { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; };
+
+function genTrial(size) {
+  const pool=shuffle(LETTERS), mem=pool.slice(0,size), isT=Math.random()>.5;
+  const probe=isT?mem[Math.floor(Math.random()*size)]:pool.slice(size).find(l=>!mem.includes(l))||pool[size];
+  return {size,memory:mem,probe,isTarget:isT};
+}
+
+function genTrials() {
+  const t=[];
+  for(const s of SS) for(let i=0;i<TRIALS_PER_SIZE;i++) t.push(genTrial(s));
+  return shuffle(t);
+}
+
+function calcResults(resps) {
+  const m={};
+  for(const r of resps){
+    if(!m[r.size]) m[r.size]={rc:[],rw:[],c:0,tot:0};
+    r.correct?(m[r.size].rc.push(r.rt),m[r.size].c++):m[r.size].rw.push(r.rt);
+    m[r.size].tot++;
+  }
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+  return SS.map(s=>({size:s,rc:m[s]?avg(m[s].rc):null,rw:m[s]?avg(m[s].rw):null,acc:m[s]?Math.round(m[s].c/m[s].tot*100):null}));
+}
+
+function MiniChart({results,labelC,labelW,labelX,labelY}) {
+  const W=500,H=180,PL=48,PR=16,PT=28,PB=36;
+  const iW=W-PL-PR,iH=H-PT-PB;
+  const all=[...results.map(r=>r.rc),...results.map(r=>r.rw)].filter(v=>v!=null);
+  if(!all.length) return null;
+  const minV=Math.max(0,Math.min(...all)-50),maxV=Math.max(...all)+50;
+  const xP=i=>PL+i*(iW/(SS.length-1));
+  const yP=v=>PT+iH-(v-minV)/(maxV-minV)*iH;
+  const pts=key=>results.map((r,i)=>r[key]!=null?[xP(i),yP(r[key])]:null).filter(Boolean);
+  const poly=p=>p.map(x=>x.join(",")).join(" ");
+  const ticks=4;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
+      {Array.from({length:ticks+1},(_,i)=>{const v=minV+(maxV-minV)*i/ticks,y=yP(v);return(
+        <g key={i}><line x1={PL} x2={W-PR} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1"/>
+        <text x={PL-4} y={y+4} textAnchor="end" fontSize="10" fill="#9ca3af">{Math.round(v)}</text></g>
+      );})}
+      {SS.map((s,i)=><text key={s} x={xP(i)} y={H-4} textAnchor="middle" fontSize="11" fill="#6b7280">{s}</text>)}
+      <text x={PL+iW/2} y={H} textAnchor="middle" fontSize="11" fill="#6b7280">{labelX}</text>
+      <text x={10} y={PT+iH/2} textAnchor="middle" fontSize="11" fill="#6b7280" transform={`rotate(-90,10,${PT+iH/2})`}>{labelY}</text>
+      {pts("rc").length>1&&<polyline points={poly(pts("rc"))} fill="none" stroke="#16a34a" strokeWidth="2.5"/>}
+      {pts("rw").length>1&&<polyline points={poly(pts("rw"))} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeDasharray="6 4"/>}
+      {pts("rc").map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4" fill="#16a34a"/>)}
+      {pts("rw").map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4" fill="#dc2626"/>)}
+      <circle cx={PL+4} cy={PT-10} r="5" fill="#16a34a"/>
+      <text x={PL+12} y={PT-6} fontSize="11" fill="#374151">{labelC}</text>
+      <line x1={PL+80} y1={PT-10} x2={PL+95} y2={PT-10} stroke="#dc2626" strokeWidth="2.5" strokeDasharray="5 4"/>
+      <circle cx={PL+103} cy={PT-10} r="5" fill="#dc2626"/>
+      <text x={PL+111} y={PT-6} fontSize="11" fill="#374151">{labelW}</text>
+    </svg>
+  );
+}
+
+// Shared trial screen: memorize + probe + feedback, with always-visible buttons
+function TrialScreen({trial, phase, feedback, onRespond, trialLabel, t, isGhost}) {
+  // isGhost = true during memorize (buttons shown but transparent/inactive)
+  return (
+    <div className="page dark" style={{flexDirection:"column",userSelect:"none"}}>
+      {trialLabel && <p style={{color:"#9ca3af",marginBottom:"1rem",fontSize:".9rem"}}>{trialLabel}</p>}
+
+      {/* Memorize phase */}
+      {phase==="memorize" && <>
+        <p style={{color:"#d1d5db",marginBottom:"1.2rem",fontSize:"1.1rem"}}>{t.memorize}</p>
+        <div style={{display:"flex",gap:".75rem",flexWrap:"wrap",justifyContent:"center",marginBottom:"3rem"}}>
+          {trial.memory.map((l,i)=><div key={i} className="mem-letter">{l}</div>)}
+        </div>
+      </>}
+
+      {/* Probe phase */}
+      {(phase==="probe"||phase==="feedback") && <>
+        <div className="probe-letter" style={{marginBottom:"1.5rem"}}>{trial.probe}</div>
+        {phase==="probe" && <p style={{color:"#6b7280",fontSize:".85rem",marginBottom:"1rem"}}>{t.pressKey}</p>}
+        {phase==="feedback" && feedback && (
+          <div style={{fontSize:"1.4rem",fontWeight:700,color:feedback.correct?"#4ade80":"#f87171",marginBottom:"1rem"}}>
+            {feedback.correct?t.correct:t.wrong}
+            {feedback.rt && <span style={{color:"#d1d5db",fontSize:"1rem",fontWeight:400,marginLeft:".75rem"}}>{feedback.rt} {t.ms}</span>}
+          </div>
+        )}
+        {/* spacer to keep buttons in same position */}
+        {phase==="memorize" && <div style={{height:"2.5rem"}}/>}
+      </>}
+
+      {/* Buttons – always rendered, ghost during memorize */}
+      <div className="resp-area" style={{marginTop: phase==="memorize"?"0":"0"}}>
+        <button
+          className={"resp-btn " + (isGhost||phase==="feedback" ? "ghost active-yes" : "active-yes")}
+          onPointerDown={()=>!isGhost&&phase==="probe"&&onRespond(true)}>
+          {t.yesLabel}
+        </button>
+        <button
+          className={"resp-btn " + (isGhost||phase==="feedback" ? "ghost active-no" : "active-no")}
+          onPointerDown={()=>!isGhost&&phase==="probe"&&onRespond(false)}>
+          {t.noLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [lang,setLang]     = useState(null);
+  const [phase,setPhase]   = useState("lang"); // lang|name|instructions|practice-memorize|practice-probe|practice-feedback|practice-done|memorize|probe|feedback|results
+  const [name,setName]     = useState("");
+  const [trials,setTrials] = useState([]);
+  const [idx,setIdx]       = useState(0);
+  const [resps,setResps]   = useState([]);
+  const [feedback,setFeedback] = useState(null);
+  const [t0,setT0]         = useState(null);
+  const [practiceTrial,setPracticeTrial] = useState(null);
+  const [practiceFB,setPracticeFB]       = useState(null);
+
+  const t = lang ? T[lang] : T.de;
+
+  // ── Memorize timer (both practice and real) ──
+  useEffect(()=>{
+    if(phase==="practice-memorize"){
+      const id=setTimeout(()=>setPhase("practice-probe"),MEMORIZE_MS);
+      return ()=>clearTimeout(id);
+    }
+    if(phase==="memorize"){
+      const id=setTimeout(()=>setPhase("probe"),MEMORIZE_MS);
+      return ()=>clearTimeout(id);
+    }
+  },[phase]);
+
+  useEffect(()=>{
+    if(phase==="probe"||phase==="practice-probe") setT0(performance.now());
+  },[phase]);
+
+  // ── Keyboard ──
+  const respond = useCallback((yes)=>{
+    if(phase==="practice-probe"){
+      const rt=Math.round(performance.now()-t0);
+      const correct=yes===practiceTrial.isTarget;
+      setPracticeFB({correct,rt});
+      setPhase("practice-feedback");
+      setTimeout(()=>setPhase("practice-done"),FEEDBACK_MS);
+      return;
+    }
+    if(phase!=="probe") return;
+    const rt=Math.round(performance.now()-t0);
+    const correct=yes===trials[idx].isTarget;
+    setResps(prev=>[...prev,{...trials[idx],rt,correct}]);
+    setFeedback({correct,rt});
+    setPhase("feedback");
+    setTimeout(()=>{
+      if(idx+1>=trials.length) setPhase("results");
+      else { setIdx(i=>i+1); setPhase("memorize"); }
+      setFeedback(null);
+    },FEEDBACK_MS);
+  },[phase,t0,practiceTrial,trials,idx]);
+
+  useEffect(()=>{
+    if(phase!=="probe"&&phase!=="practice-probe") return;
+    const h=e=>{const k=e.key.toLowerCase();if(k==="y")respond(true);else if(k==="n")respond(false);};
+    window.addEventListener("keydown",h);
+    return ()=>window.removeEventListener("keydown",h);
+  },[phase,respond]);
+
+  const startPractice = () => {
+    setPracticeTrial(genTrial(3));
+    setPracticeFB(null);
+    setPhase("practice-memorize");
+  };
+
+  const startExp = () => {
+    setTrials(genTrials()); setIdx(0); setResps([]); setFeedback(null); setPhase("memorize");
+  };
+
+  const buildRows = (results) => {
+    const hdr=["Name",...SS.map(s=>`RT_korrekt_SS${s}`),...SS.map(s=>`RT_falsch_SS${s}`),...SS.map(s=>`Acc%_SS${s}`)].join("\t");
+    const dat=[name,...SS.map(s=>results.find(r=>r.size===s)?.rc??""),...SS.map(s=>results.find(r=>r.size===s)?.rw??""),...SS.map(s=>results.find(r=>r.size===s)?.acc??"")].join("\t");
+    return {hdr,dat};
+  };
+
+  // ── LANG ──
+  if(phase==="lang") return (
+    <div className="page">
+      <div className="card" style={{textAlign:"center"}}>
+        <div style={{fontSize:"3rem",marginBottom:"1rem"}}>🧠</div>
+        <h1 style={{fontSize:"1.4rem",fontWeight:700,color:"#3730a3",marginBottom:".5rem"}}>Sternberg Paradigm</h1>
+        <p style={{color:"#6b7280",marginBottom:"2rem"}}>Wähle eine Sprache / Select a language</p>
+        <div style={{display:"flex",gap:"1rem",justifyContent:"center"}}>
+          {["de","en"].map(l=>(
+            <button key={l} className="btn btn-primary" style={{width:"auto",padding:".75rem 2rem"}}
+              onClick={()=>{setLang(l);setPhase("name");}}>
+              {l==="de"?"🇩🇪 Deutsch":"🇬🇧 English"}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── NAME ──
+  if(phase==="name") return (
+    <div className="page">
+      <div className="card">
+        <div style={{fontSize:"2.5rem",textAlign:"center",marginBottom:".5rem"}}>🧠</div>
+        <h1 style={{fontSize:"1.4rem",fontWeight:700,color:"#3730a3",textAlign:"center"}}>{t.title}</h1>
+        <p style={{color:"#6b7280",textAlign:"center",marginBottom:"1.5rem"}}>{t.subtitle}</p>
+        <label style={{fontSize:".9rem",fontWeight:500,display:"block",marginBottom:".3rem"}}>{t.nameLabel}</label>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder={t.namePlaceholder}
+          style={{marginBottom:"1rem"}} onKeyDown={e=>e.key==="Enter"&&name.trim()&&setPhase("instructions")}/>
+        <button className="btn btn-primary" disabled={!name.trim()} onClick={()=>setPhase("instructions")}>{t.continue}</button>
+      </div>
+    </div>
+  );
+
+  // ── INSTRUCTIONS ──
+  if(phase==="instructions") return (
+    <div className="page">
+      <div className="card">
+        <h2 style={{fontWeight:700,fontSize:"1.2rem",color:"#3730a3",marginBottom:"1rem"}}>{t.instrTitle}</h2>
+        <ol style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".75rem",marginBottom:"1.2rem"}}>
+          {t.instr.map((s,i)=>(
+            <li key={i} style={{display:"flex",gap:".75rem",alignItems:"flex-start"}}>
+              <span className="tag">{i+1}</span>
+              <span style={{color:"#374151"}}>{s}</span>
+            </li>
+          ))}
+        </ol>
+        <div style={{background:"#eef2ff",borderRadius:".6rem",padding:".75rem",fontSize:".85rem",color:"#4338ca",marginBottom:"1.2rem"}}>
+          📋 {t.trialsInfo}
+        </div>
+        <button className="btn btn-primary" onClick={startPractice}>{lang==="de"?"Übungsdurchgang starten":"Start Practice Trial"}</button>
+      </div>
+    </div>
+  );
+
+  // ── PRACTICE MEMORIZE ──
+  if(phase==="practice-memorize"&&practiceTrial) return (
+    <TrialScreen trial={practiceTrial} phase="memorize" feedback={null}
+      onRespond={respond} trialLabel={lang==="de"?"🟡 Übung – zählt nicht":"🟡 Practice – doesn't count"}
+      t={t} isGhost={true}/>
+  );
+
+  // ── PRACTICE PROBE ──
+  if(phase==="practice-probe"&&practiceTrial) return (
+    <TrialScreen trial={practiceTrial} phase="probe" feedback={null}
+      onRespond={respond} trialLabel={lang==="de"?"🟡 Übung – zählt nicht":"🟡 Practice – doesn't count"}
+      t={t} isGhost={false}/>
+  );
+
+  // ── PRACTICE FEEDBACK ──
+  if(phase==="practice-feedback"&&practiceTrial) return (
+    <TrialScreen trial={practiceTrial} phase="feedback" feedback={practiceFB}
+      onRespond={respond} trialLabel={lang==="de"?"🟡 Übung – zählt nicht":"🟡 Practice – doesn't count"}
+      t={t} isGhost={true}/>
+  );
+
+  // ── PRACTICE DONE ──
+  if(phase==="practice-done") return (
+    <div className="page dark">
+      <div className="card" style={{textAlign:"center"}}>
+        <div style={{fontSize:"2.5rem",marginBottom:"1rem"}}>🟡</div>
+        <h2 style={{fontWeight:700,fontSize:"1.2rem",color:"#3730a3",marginBottom:".5rem"}}>{t.practiceTitle}</h2>
+        <p style={{color:"#6b7280",marginBottom:".75rem"}}>
+          {practiceFB?.correct ? t.practiceCorrect : t.practiceWrong}
+        </p>
+        <p style={{color:"#374151",fontWeight:600,marginBottom:"1.5rem"}}>{t.practicePrompt}</p>
+        <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+          <button className="btn btn-primary" onClick={startExp}>{t.practiceStart}</button>
+          <button className="btn btn-gray" onClick={startPractice}>{t.practiceAgain}</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── REAL MEMORIZE ──
+  if(phase==="memorize"&&trials.length) return (
+    <TrialScreen trial={trials[idx]} phase="memorize" feedback={null}
+      onRespond={respond} trialLabel={t.trialOf(idx+1,trials.length)}
+      t={t} isGhost={true}/>
+  );
+
+  // ── REAL PROBE ──
+  if(phase==="probe"&&trials.length) return (
+    <TrialScreen trial={trials[idx]} phase="probe" feedback={null}
+      onRespond={respond} trialLabel={t.trialOf(idx+1,trials.length)}
+      t={t} isGhost={false}/>
+  );
+
+  // ── REAL FEEDBACK ──
+  if(phase==="feedback"&&trials.length) return (
+    <TrialScreen trial={trials[idx]} phase="feedback" feedback={feedback}
+      onRespond={respond} trialLabel={t.trialOf(idx+1,trials.length)}
+      t={t} isGhost={true}/>
+  );
+
+  // ── RESULTS ──
+  if(phase==="results") {
+    const results=calcResults(resps);
+    const {hdr,dat}=buildRows(results);
+    return (
+      <div className="page" style={{alignItems:"flex-start"}}>
+        <div className="card">
+          <h2 style={{fontWeight:700,fontSize:"1.3rem",color:"#3730a3"}}>{t.yourResults}</h2>
+          <p style={{color:"#6b7280",marginBottom:"1rem"}}>{name}</p>
+          <MiniChart results={results} labelC={t.correct_short} labelW={t.wrong_short} labelX={t.setSizeLabel} labelY={t.ms}/>
+          <div style={{overflowX:"auto",marginTop:"1rem",marginBottom:"1.2rem"}}>
+            <table>
+              <thead><tr>
+                <th>{t.setSize}</th>
+                <th style={{textAlign:"right",color:"#15803d"}}>{t.avgRTcorrect}</th>
+                <th style={{textAlign:"right",color:"#b91c1c"}}>{t.avgRTwrong}</th>
+                <th style={{textAlign:"right"}}>{t.accuracy}</th>
+              </tr></thead>
+              <tbody>{results.map(r=>(
+                <tr key={r.size}>
+                  <td>{r.size}</td>
+                  <td style={{textAlign:"right",fontFamily:"monospace",color:"#15803d"}}>{r.rc??'–'}</td>
+                  <td style={{textAlign:"right",fontFamily:"monospace",color:"#b91c1c"}}>{r.rw??'–'}</td>
+                  <td style={{textAlign:"right"}}>{r.acc!=null?r.acc+'%':'–'}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <div className="row-box">
+            <p style={{fontSize:".85rem",fontWeight:600,color:"#3730a3",marginBottom:".3rem"}}>{t.copyHint}</p>
+            <div className="row-line mono" style={{color:"#9ca3af"}}>{hdr}</div>
+            <div className="row-line mono" style={{color:"#1f2937",marginTop:".3rem"}}>{dat}</div>
+          </div>
+          <button className="btn btn-gray" onClick={()=>{setPhase("lang");setLang(null);setName("");}}>{t.restart}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
